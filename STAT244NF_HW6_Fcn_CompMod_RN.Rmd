@@ -1,0 +1,192 @@
+---
+title: 'Homework 6: Functions for Compartmental Models and Reproductive Numbers'
+subtitle: "STAT 244NF: Infectious Disease Modeling"
+author: "YOUR NAME HERE"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(ggplot2)
+library(dplyr)
+```
+
+## Instructions:
+
+1. Please replace "YOUR NAME HERE" under author above with your name before you knit your final document for submission.
+2. All of your homework needs to be completed in this document, whether it requires R or just typed responses. As we incorporate more statistical computing into the course, it will be important that you are comfortable with R Markdown, so start now. Remember that R Markdown gives us a convenient framework for reproducible statistical reports because it contains a complete record of our analyses and conclusions.
+3. You may knit to PDF, HTML, or Word (click on the drop-down menu for Knit to choose the file output type). 
+4. Before submitting your work, please make sure the knitted file is well organized, legible, and looks the way you expect!
+5. Please include the names of any classmates with whom you worked on this homework, as well as any external resources that you might have used.
+6. This homework assignment is **due on Monday, March 25, 2024 and should be submitted to Gradescope**.
+
+- *Collaborators:*
+
+- *External resources:*
+
+## Reproductive Numbers
+
+**RN 1. Write a function to calculate the reproductive number for an SI model, where the growth rate and infectious period are variables in the function and the function returns the value of the reproductive number. Call the function RN_SI. To test your function, verify that for $\Lambda=0.5$ cases/day and $D=2$ days, the resulting reproductive number is 2. You must show this to get full credit.** 
+
+```{r}
+
+```
+
+**RN 2. Write a function to calculate the reproductive number for an SEIR model, where the growth rate and serial interval are variables in the function, and the function returns the value of the reproductive number. Call the function RN_SEIR. To test your function, verify that for a growth rate of 1.2 cases/day and a serial interval of 2.2 days, the resulting reproductive number is 3.64. You must show this to get full credit.** 
+
+```{r}
+
+```
+
+**RN 3. The herd immunity threshold, which is defined as the proportion of the population that need to be immune for the effective reproductive number to be 1 (endemic state - not growing or shrinking), is calculated as $1-\frac{1}{R_0}$. What is the the herd immunity threshold for the infection described in (b)?**
+
+```{r}
+
+```
+
+**RN 4. Suppose for the infection described in (b), 75% of the population are immune through vaccination. Will the reproductive number be greater than 1 (meaning it will continue to spread in the population), exactly 1 (meaning it will remain steady in the population, neither growing nor shrinking), or less than 1 (meaning we have interrupted the chain of transmission and the infection will subside in the population)?**
+
+**Response:**
+
+
+## Examining the relationship between risk and rate.
+
+When we introduced one of the potential formulations for $\lambda_t$, it was claimed in the notes that 
+
+$$\underbrace{c_e\times \frac{I_{t-1}}{N}}_{\text{rate}}\approx \underbrace{1-e^{\overbrace{-c_e\times \frac{I_{t-1}}{N}}}}^{\text{rate}}_{\text{risk}}.$$
+If there is a claim made that makes you feel skeptical, you can always investigate it yourself. Is it true? If so, is it true for all relevant values, or is it true for a range. Let's briefly explore the relationship between a rate and risk by running the code below. 
+```{r, fig.align='center'}
+rate_versus_risk <- function(rate){
+  risk <- 1-exp(-rate)
+  return(data.frame(rate=rate,
+                    risk=risk))
+}
+
+rate_risk_df <- rate_versus_risk(rate=seq(0,1,by=0.1))
+
+ggplot(data=rate_risk_df, aes(x=rate, y=risk)) + 
+  geom_line(linewidth=1.1, color="cornflowerblue") + 
+  geom_vline(xintercept=0.1, linetype="dashed") + 
+  geom_hline(yintercept=0.1, linetype="dashed") + 
+  geom_vline(xintercept=0.2, linetype="dashed") + 
+  geom_hline(yintercept=0.2, linetype="dashed") + 
+  theme_bw()
+```
+**RR 1. Based on your examination of the plot, for what range of $c_e\frac{I_{t-1}}{N}$ do you feel comfortable with the claim that **
+
+$$c_e\times \frac{I_{t-1}}{N}\approx 1-e^{-c_e\times \frac{I_{t-1}}{N}}?$$
+
+**Response:**
+
+
+In practice, modelers tend to work with risks rather than rates (Vynnycky and White, Chapter 2) because they are easier to calculate, and tend to be approximately equal over the range that is relevant in infectious disease modeling. In the following modeling exercise for mumps, we are going to exclusively use risks for our parameters, so please pay attention to the details.
+
+## Mumps
+
+Mumps is a viral illness characterized by fever, headache, muscle pain, lethargy, and loss of appetite, as well as swelling of facial glands. While children in the United States are vaccinated for mumps as part of the standard course of childhood vaccinations, there have still been large outbreaks of mumps on college campuses including Harvard University (2016), The Ohio State University (2014), and the University of Iowa (2006, 2016). (https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8790351/).
+
+According to the CDC, the average incubation period for mumps is 16-18 days, although it can range from 12 to 25 days at the extremes. Individuals become infectious 2-3 days before facial swelling begins, and remain infectious for about 5 days after swelling begins. Since the incubation period is the time from exposure to symptom onset, and we are told that individuals are infectious 2-3 days before swelling begins (before symptom onset), this suggests a pre-infectious period of 13-16 days, with a larger range of 9 to 23 days at the extremes. The presence of this pre-infectious period suggests that an appropriate model for mumps is an SEIR model, which we can capture with the following. We are also assuming this is a fulling immunizing infection. The basic reproductive number ranges from 4 to 7. 
+
+For this modeling exercise, we will use the following model.
+
+SEIR model differencing equations:
+
+$$S_t=S_{t-1}-\lambda_tS_{t-1}$$
+$$E_t=E_{t-1}+\lambda_tS_{t-1}-\pi E_{t-1}$$
+$$I_t=I_{t-1}+\pi E_{t-1}-\rho I_{t-1}$$
+$$R_t=R_{t-1}+\rho I_{t-1}$$
+where $\lambda_t=1-e^{-c_e\frac{I_{t-1}}{N}}$, $\pi=1-e^{-\frac{1}{D'}}$, and $\rho=1-e^{-\frac{1}{D}}$, where $D'$ and $D$ are the pre-infectious and infectious periods, respectively.
+
+**SEIR 1. Write a function to run a simulation of a mumps outbreak. Call your function `SEIR_simulation`. In order to receive full credit, your function must do the following:**
+
+- use the basic reproductive number (let's call it RN), N, S0, E0, I0, pD (this is $D'$), D, and TotalTime as variables. Note, if you prefer other names, you can use any informative variable names that are valid in R, but they have to be variables in the model - they cannot be fixed quantities, i.e. numbers. Also, note that N is the same at all time points, so you can get an initial value for the R compartment if you know N, S0, E0, and I0;
+
+- return a data frame with three columns, time, compartment, and count.
+
+```{r}
+
+```
+
+
+**SEIR 2. Run your function with the following arguments. Then, plot each result using ggplot. Note, for each combination of arguments, you will need to save your function as something so that you will be able to use that function (a data frame) for plotting.**
+
+(a) N=1000, S0=999, E0=0, I0=1, RN=4, pD=13 days, D=7 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(b) N=1000, S0=999, E0=0, I0=1, RN=5.5, pD=13 days, D=7 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(c) N=1000, S0=999, E0=0, I0=1, RN=7, pD=13 days, D=7 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(d) N=1000, S0=999, E0=0, I0=1, RN=4, pD=16 days, D=7 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(e) N=1000, S0=999, E0=0, I0=1, RN=5.5, pD=16 days, D=7 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(f) N=1000, S0=999, E0=0, I0=1, RN=7, pD=16 days, D=7 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(g) N=1000, S0=999, E0=0, I0=1, RN=4, pD=13 days, D=8 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(h) N=1000, S0=999, E0=0, I0=1, RN=5.5, pD=13 days, D=8 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(i) N=1000, S0=999, E0=0, I0=1, RN=7, pD=13 days, D=8 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(j) N=1000, S0=999, E0=0, I0=1, RN=4, pD=16 days, D=8 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(k) N=1000, S0=999, E0=0, I0=1, RN=5.5, pD=16 days, D=8 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+(l) N=1000, S0=999, E0=0, I0=1, RN=7, pD=16 days, D=8 days, TotalTime=365 days
+
+```{r fig.align='center'}
+
+```
+
+**SEIR 3. Consider your simulations in SEIR 2. If you want to understand the impact of changing a variable in a simulation, how can you do this in a way that allows you to accurately assess that impact? Specifically:**
+
+(a) Fin a group of simulations that allow you to assess the impact of changing the basic reproductive number on the simulation results? What set are you would you choose, and why? Note, there are multiple correct answers.
+
+
+(b) Find two simulations that allow you to assess the impact of changing the pre-infectious period from 13 to 16 days. Which two simulations are you examining and why? What is the impact on the resulting epidemic curves? You can comment on the slopes of the curves, the width of the E curve, etc.
